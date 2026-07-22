@@ -164,7 +164,7 @@ function renderHome(app: HTMLElement) {
   rest.forEach((p, i) => {
     const tall = p.orientation === "portrait";
     const shot = el(`<div class="shot ${tall ? "tall" : "land"}" data-reveal></div>`);
-    shot.appendChild(frame(p, { sizes: tall ? "(max-width: 800px) 100vw, 46vw" : "100vw", index: i + 1 }));
+    shot.appendChild(frame(p, { sizes: "100vw", index: i + 1 }));
     flow.appendChild(shot);
   });
 
