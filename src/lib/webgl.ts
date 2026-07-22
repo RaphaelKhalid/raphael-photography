@@ -18,11 +18,12 @@ const vertexShader = `
   uniform float uAppear;
   void main() {
     vec3 pos = aVertexPosition;
-    // bend the plane along its width, scaled by scroll velocity
-    float bend = uVelocity * 0.045;
+    // uniform overscan (preserves aspect) so the velocity bend never reveals the edge
+    pos.xy *= 1.09;
+    // gentle bend along the width, scaled by scroll velocity (clamped)
+    float v = clamp(uVelocity, -16.0, 16.0);
+    float bend = v * 0.0025;
     pos.y += sin((pos.x + 1.0) * 1.5708) * bend;
-    // reveal: rise from just below as uAppear 0 -> 1
-    pos.y -= (1.0 - uAppear) * 0.12;
     gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
     vTextureCoord = (uTextureMatrix0 * vec4(aTextureCoord, 0.0, 1.0)).xy;
   }`;
@@ -32,14 +33,13 @@ const fragmentShader = `
   varying vec2 vTextureCoord;
   uniform sampler2D uSampler0;
   uniform float uVelocity;
-  uniform float uAppear;
   void main() {
-    float amt = clamp(abs(uVelocity) * 0.0016, 0.0, 0.018);
+    float amt = clamp(abs(uVelocity) * 0.00028, 0.0, 0.004);
     vec2 dir = vec2(0.0, 1.0);
     float r = texture2D(uSampler0, vTextureCoord + dir * amt).r;
     float g = texture2D(uSampler0, vTextureCoord).g;
     float b = texture2D(uSampler0, vTextureCoord - dir * amt).b;
-    gl_FragColor = vec4(r, g, b, uAppear);
+    gl_FragColor = vec4(r, g, b, 1.0);
   }`;
 
 const supportsWebGL = () => {
@@ -87,19 +87,14 @@ export function initWebGL(lenis: Lenis | null): boolean {
     frames.forEach((frameEl) => {
       const plane = new Plane(curtains, frameEl, {
         vertexShader, fragmentShader,
-        transparent: true,
         widthSegments: 12, heightSegments: 1,
         uniforms: {
           uVelocity: { name: "uVelocity", type: "1f", value: 0 },
-          uAppear:   { name: "uAppear",   type: "1f", value: 0 },
         },
       });
-      // shader-driven reveal when the frame scrolls into view
-      let target = 0;
-      new IntersectionObserver((entries, obs) => {
-        for (const en of entries) if (en.isIntersecting) { target = 1; obs.disconnect(); }
-      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.06 }).observe(frameEl);
-      (plane as any)._appearTarget = () => target;
+      // hide this frame's DOM image only once its plane (and texture) are ready,
+      // so a frame is never blank (plane draws at full opacity immediately)
+      plane.onReady(() => frameEl.classList.add("gl-ready"));
       planes.push(plane);
     });
   } catch {
@@ -114,16 +109,18 @@ export function initWebGL(lenis: Lenis | null): boolean {
   // hide the DOM images (and neutralise CSS reveals) only once WebGL is live
   document.documentElement.classList.add("curtains-active");
 
+  // recompute plane geometry after layout/fonts/images settle — grid-based strip
+  // cells aren't sized at synchronous init, so their planes start mispositioned
+  const resize = () => { try { curtains.resize(); planes.forEach((p) => p.resize()); } catch { /* noop */ } };
+  addEventListener("load", resize);
+  [120, 400, 900, 1800].forEach((t) => setTimeout(resize, t));
+  frames.forEach((f) => { const im = f.querySelector("img"); if (im && !im.complete) im.addEventListener("load", resize, { once: true }); });
+
   curtains.onRender(() => {
     if (failed) return;
     smooth = lerp(smooth, velocity, 0.1);
     velocity *= 0.9;
-    for (const p of planes) {
-      const cur = p.uniforms.uAppear.value;
-      const tgt = (p as any)._appearTarget ? (p as any)._appearTarget() : 1;
-      p.uniforms.uAppear.value = lerp(cur, tgt, 0.06);
-      p.uniforms.uVelocity.value = smooth;
-    }
+    for (const p of planes) p.uniforms.uVelocity.value = smooth;
   });
 
   return true;

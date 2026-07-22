@@ -269,11 +269,12 @@ html.lenis, html.lenis body { height: auto; }
 /* ---------------- WebGL gallery ---------------- */
 #webgl-canvas { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 #webgl-canvas canvas { position: fixed; top: 0; left: 0; }
-/* when WebGL is live, the planes render the frames — hide the DOM images and
-   neutralise the CSS reveals (the shader handles fade + rise). */
-.curtains-active .flow .frame > picture,
-.curtains-active .flow .frame > picture > img { opacity: 0 !important; }
+/* when WebGL is live, neutralise the CSS reveals (shader handles fade + rise) so
+   the DOM box stays put under its plane. Each image is hidden individually only
+   once its own plane is ready (.gl-ready) — never before, so nothing blanks. */
 .curtains-active .flow [data-reveal] { opacity: 1 !important; transform: none !important; }
+.flow .frame.gl-ready > picture,
+.flow .frame.gl-ready > picture > img { opacity: 0 !important; }
 
 /* condensed vertical strip (diptych / triptych of portraits) */
 .m-strip .strip { display: grid; gap: clamp(8px, 1.2vw, 18px); align-items: start; }
