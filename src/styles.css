@@ -239,7 +239,7 @@ html.lenis, html.lenis body { height: auto; }
 .shot.land .frame { width: 100%; height: auto; }
 /* portrait: enlarged to fill the screen height, centred, whole image kept */
 .shot.tall { display: flex; justify-content: center; }
-.shot.tall .frame { height: 92svh; width: auto; max-width: 100%; }
+.shot.tall .frame { height: 100svh; width: auto; max-width: 100%; }
 @media (max-width: 800px) {
   .shot.tall .frame { height: auto; width: 100%; }
 }
