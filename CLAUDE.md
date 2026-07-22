@@ -31,7 +31,9 @@ Repo: https://github.com/RaphaelKhalid/raphael-sf-photography
 - **Image pipeline** `scripts/images.mjs` (sharp): `Edited/*.JPG` → responsive
   AVIF+WebP at 640/1280/1920/2560px into `public/img/`, plus per-image LQIP tone
   and dimensions into `generated.json`. Keeps sRGB embedded (blue-hour banding).
-  Runs as `prebuild`, so `npm run build` regenerates images from `Edited/`.
+  **Not run at build time** — derivatives in `public/img/` are committed so Vercel
+  deploys stay fast. Run `npm run images` manually after changing photos and
+  commit the output.
 - **Adding a photo:** drop the graded JPEG in `Edited/`, add an entry to
   `content` in `photos.ts`, run `npm run images`. See README for the full loop.
 

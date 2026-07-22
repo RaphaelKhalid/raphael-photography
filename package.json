@@ -6,7 +6,6 @@
   "scripts": {
     "images": "node scripts/images.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/images.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
