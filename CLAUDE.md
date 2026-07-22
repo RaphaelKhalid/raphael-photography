@@ -11,8 +11,11 @@ site) and the **color-grading workflow** that produces its images.
   JPEGs; nine carry EXIF orientation 8 (they display as 4000×6000 portrait).
   **Read-only masters. Git-ignored** (198 MB, not needed to build the site).
   Never overwrite one; edits go to `Edited/`.
-- `Edited/` — graded, full-res, correctly-oriented JPEGs. The **source of truth
-  for the site's image pipeline**, committed to the repo.
+- **The site's image pipeline now sources the unedited originals in `Photos/`**
+  (the moon/detail lost fidelity from grade re-encode + aggressive AVIF; the
+  natural look at high quality is what's shipped). `Edited/` (the cinematic grade)
+  is kept but **no longer feeds the site** — to bring the grade back, re-run it on
+  the originals at high fidelity and point `SRC` in `scripts/images.mjs` back.
 - `src/`, `scripts/images.mjs`, `*.html`, `public/img/` — the web app (see below).
 
 Live: https://raphael-photography.vercel.app ·
