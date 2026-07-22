@@ -1,7 +1,7 @@
 import "./styles.css";
 import { photos, hero, type Photo } from "./data/photos";
 import { frame, header, footer } from "./lib/dom";
-import { initSmoothScroll, initReveals, initParallax } from "./lib/motion";
+import { initSmoothScroll, initReveals, initParallax, initVelocityFX } from "./lib/motion";
 
 /* ---------------- theme ---------------- */
 function initTheme() {
@@ -147,74 +147,29 @@ function initLightbox(set: Photo[]) {
 }
 
 /* ---------------- home ---------------- */
-const HERO_SIZES = "(max-width: 1500px) 100vw, 1500px";
-
-// group an ordered list into clusters, preferring triptychs, never leaving an orphan
-function clusterize<T>(arr: T[]): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; ) {
-    let take = Math.min(3, arr.length - i);
-    if (arr.length - i - take === 1) take--; // avoid a lonely trailing frame
-    out.push(arr.slice(i, i + take));
-    i += take;
-  }
-  return out;
-}
-
 function renderHome(app: HTMLElement) {
   const rest = photos.filter((p) => p.base !== hero.base);
 
-  // ---- full-viewport hero ----
+  // ---- hero: the whole scene, full width, header floating over it ----
   const heroSec = el(`
-    <section class="hero-full">
-      <div class="bleed" data-parallax="70"></div>
+    <section class="hero-shot" style="aspect-ratio:${hero.w} / ${hero.h}">
+      <div class="hs-frame"></div>
       <span class="scroll-cue">scroll</span>
     </section>`);
-  heroSec.querySelector(".bleed")!.appendChild(frame(hero, { sizes: HERO_SIZES, eager: true, index: 0 }));
+  heroSec.querySelector(".hs-frame")!.appendChild(frame(hero, { sizes: "100vw", eager: true, index: 0 }));
 
-  // ---- flow: interleave landscape "moments" with condensed vertical strips ----
+  // ---- flow: one image per row. landscape = full width (whole scene);
+  //           portrait = enlarged to fill the screen height ----
   const flow = el(`<div class="flow"></div>`);
-  const flat: Photo[] = [];               // visual order → lightbox index
-  const emit = (p: Photo, sizes: string) => { const f = frame(p, { sizes, index: 1 + flat.length }); flat.push(p); return f; };
-
-  const land = rest.filter((p) => p.orientation === "landscape");
-  const clusters = clusterize(rest.filter((p) => p.orientation === "portrait"));
-  const moment = ["m-bleed", "m-full", "m-offset-l", "m-full", "m-offset-r"];
-
-  let li = 0, ci = 0, cyc = 0;
-  while (li < land.length || ci < clusters.length) {
-    // whichever pool is proportionally behind goes next (landscape wins ties)
-    const takeCluster = ci < clusters.length &&
-      (li >= land.length || ci / clusters.length < li / land.length);
-
-    if (takeCluster) {
-      const group = clusters[ci++];
-      const strip = el(`<div class="movement m-strip wrap" data-count="${group.length}"></div>`);
-      const rail = el(`<div class="strip"></div>`);
-      group.forEach((p, k) => {
-        const cell = el(`<div data-reveal data-reveal-delay="${k * 90}"></div>`);
-        cell.appendChild(emit(p, "(max-width:720px) 100vw, 30vw"));
-        rail.appendChild(cell);
-      });
-      strip.appendChild(rail);
-      flow.appendChild(strip);
-    } else {
-      const p = land[li++];
-      const cls = moment[cyc++ % moment.length];
-      const bleed = cls === "m-bleed";
-      const m = el(`<div class="movement ${cls} ${bleed ? "" : "wrap"}" data-reveal></div>`);
-      const inner = el(`<div class="inner"></div>`);
-      const sizes = bleed ? "100vw" : cls === "m-full" ? HERO_SIZES : "(max-width:720px) 100vw, 64vw";
-      inner.appendChild(emit(p, sizes));
-      m.appendChild(inner);
-      flow.appendChild(m);
-    }
-  }
+  rest.forEach((p, i) => {
+    const tall = p.orientation === "portrait";
+    const shot = el(`<div class="shot ${tall ? "tall" : "land"}" data-reveal></div>`);
+    shot.appendChild(frame(p, { sizes: tall ? "(max-width: 800px) 100vw, 46vw" : "100vw", index: i + 1 }));
+    flow.appendChild(shot);
+  });
 
   app.append(heroSec, flow);
-  const foot = el(`<div class="wrap pad-bot" style="margin-top:clamp(50px,9vw,110px)"></div>`);
-  app.append(foot);
-  return [hero, ...flat];
+  return [hero, ...rest];
 }
 
 function renderAbout(app: HTMLElement) {
@@ -265,6 +220,7 @@ function boot() {
   const lenis = initSmoothScroll();
   initReveals();
   initParallax(lenis);
+  initVelocityFX(lenis);
 }
 
 document.addEventListener("DOMContentLoaded", boot);
