@@ -46,27 +46,56 @@ function initLightbox(set: Photo[]) {
     <button class="lb-nav prev" type="button" aria-label="Previous">‹</button>
     <img alt="">
     <button class="lb-nav next" type="button" aria-label="Next">›</button>
-    <div class="lb-index" aria-live="polite"></div>`;
+    <div class="lb-index" aria-live="polite"></div>
+    <div class="lb-quality" aria-hidden="true"></div>`;
   document.body.appendChild(lb);
   const img = lb.querySelector("img") as HTMLImageElement;
   const idxEl = lb.querySelector(".lb-index") as HTMLElement;
-  let i = 0, lastFocus: HTMLElement | null = null;
+  const qEl = lb.querySelector(".lb-quality") as HTMLElement;
+  let i = 0, lastFocus: HTMLElement | null = null, token = 0;
 
-  const wide = () => {
-    const ws: number[] = (window as any).__widths(set[i]);
+  const supportsAvif = document.createElement("canvas").toDataURL("image/avif").startsWith("data:image/avif");
+  const ext = supportsAvif ? "avif" : "webp";
+  const url = (p: Photo, w: number) => `/img/${p.base}-${w}.${ext}`;
+  const widthsOf = (p: Photo): number[] => (window as any).__widths(p);
+  const viewportTier = (p: Photo) => {
+    const ws = widthsOf(p);
     const target = window.innerWidth * (window.devicePixelRatio || 1);
-    return ws.find((w) => w >= target) ?? ws[ws.length - 1]; // smallest tier that covers the viewport
+    return ws.find((w) => w >= target) ?? ws[ws.length - 1];
   };
+  const lowTier = (p: Photo) => widthsOf(p).find((w) => w >= 1280) ?? widthsOf(p)[0];
+
+  // Progressive: show a light tier instantly, then decode-and-swap up to the
+  // viewport tier, then to the full-resolution master — cancelled on navigation.
+  const upgrade = async (p: Photo, w: number, my: number, label: string) => {
+    if (my !== token) return;
+    const pre = new Image();
+    pre.src = url(p, w);
+    try { await pre.decode(); } catch { return; }
+    if (my !== token) return;
+    img.src = pre.src;
+    img.classList.add("loaded");
+    qEl.textContent = label;
+    qEl.classList.add("show");
+  };
+
   const show = (n: number) => {
     i = (n + set.length) % set.length;
     const p = set[i];
+    const my = ++token;
     img.classList.remove("loaded");
-    const supportsAvif = document.createElement("canvas").toDataURL("image/avif").startsWith("data:image/avif");
-    img.src = `/img/${p.base}-${wide()}.${supportsAvif ? "avif" : "webp"}`;
+    qEl.classList.remove("show");
     img.alt = p.alt;
     idxEl.textContent = `${String(i + 1).padStart(2, "0")} / ${String(set.length).padStart(2, "0")}`;
+    const low = lowTier(p), mid = viewportTier(p), full = widthsOf(p)[widthsOf(p).length - 1];
+    img.src = url(p, low);
     if (img.complete) img.classList.add("loaded");
-    else img.addEventListener("load", () => img.classList.add("loaded"), { once: true });
+    else img.addEventListener("load", () => { if (my === token) img.classList.add("loaded"); }, { once: true });
+    // chain the upgrades
+    (async () => {
+      if (mid > low) await upgrade(p, mid, my, `${mid}px`);
+      if (full > mid) await upgrade(p, full, my, `${full}px · full resolution`);
+    })();
   };
   const open = (n: number) => {
     lastFocus = document.activeElement as HTMLElement;

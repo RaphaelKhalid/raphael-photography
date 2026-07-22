@@ -182,6 +182,13 @@ h1, h2, h3 { font-weight: 400; text-wrap: balance; margin: 0; }
 .lb .lb-nav { top: 50%; transform: translateY(-50%); font-size: 22px; }
 .lb .prev { left: 14px; } .lb .next { right: 14px; }
 .lb.cursor-mode { cursor: none; }
+.lb .lb-quality {
+  position: absolute; bottom: 22px; right: 22px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity .5s ease;
+}
+.lb .lb-quality.show { opacity: .7; }
 
 .skip { position: absolute; left: -9999px; }
 .skip:focus { left: 16px; top: 16px; z-index: 100; background: var(--bg); padding: 8px 12px; font-family: var(--mono); font-size: 12px; }
