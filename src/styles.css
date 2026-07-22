@@ -266,6 +266,15 @@ html.lenis, html.lenis body { height: auto; }
   .m-pair.stagger .p2 { margin-top: 0; }
 }
 
+/* condensed vertical strip (diptych / triptych of portraits) */
+.m-strip .strip { display: grid; gap: clamp(8px, 1.2vw, 18px); align-items: start; }
+.m-strip[data-count="2"] .strip { grid-template-columns: 1fr 1fr; }
+.m-strip[data-count="3"] .strip { grid-template-columns: 1fr 1fr 1fr; }
+.m-strip .frame { cursor: zoom-in; }
+@media (max-width: 720px) {
+  .m-strip .strip { grid-template-columns: 1fr !important; gap: 20px; }
+}
+
 /* chapter divider between movements */
 .chapter { display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
   padding: clamp(10px,3vw,30px) 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
