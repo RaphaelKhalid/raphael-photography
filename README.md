@@ -10,9 +10,9 @@ image pipeline, self-hosted IBM Plex Mono / Sans. No CMS, no backend.
 
 ```bash
 npm install
-npm run images   # generate responsive AVIF/WebP + LQIP from Edited/  (run once, or when photos change)
+npm run images   # generate responsive AVIF/WebP + LQIP from Edited/  (run when photos change)
 npm run dev      # local dev server
-npm run build    # production build to dist/  (prebuild regenerates images)
+npm run build    # production build to dist/  (does NOT regenerate images)
 npm run preview  # preview the production build
 ```
 
@@ -56,9 +56,11 @@ profiles). Originals live outside the repo (`Photos/`, git-ignored).
 
 ## Deploy
 
-Vercel, static output (`vercel.json`). Push to the repo → Vercel builds
-`npm run build` and serves `dist/`.
-```
+Vercel, static output (`vercel.json`). Push to the repo → Vercel runs
+`npm run build` (Vite only) and serves `dist/`. The responsive derivatives in
+`public/img/` are committed, so deploys are fast and don't regenerate images.
+**When you change photos, run `npm run images` locally and commit the result
+before pushing.**
 
 ## Routes
 

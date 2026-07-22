@@ -5,12 +5,12 @@
 @import "@fontsource/ibm-plex-sans/400.css";
 
 :root {
-  --bg: #0a0a0b;
+  --bg: #000000;
   --text: #ededed;
   --muted: #83838a;
   --line: rgba(255, 255, 255, 0.09);
   --hair: rgba(255, 255, 255, 0.045);
-  --scrim: rgba(10, 10, 11, 0.72);
+  --scrim: rgba(0, 0, 0, 0.72);
   --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
   --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   --maxw: 1500px;
