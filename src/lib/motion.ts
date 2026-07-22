@@ -35,6 +35,29 @@ export function initReveals(root: ParentNode = document) {
   items.forEach((el) => io.observe(el));
 }
 
+/** Scroll-velocity FX: a subtle live scale + skew on the images while scrolling,
+ *  easing back to rest. Transforms the native <img> (no resampling → no quality
+ *  loss) — the "close to WebGL" magic. */
+export function initVelocityFX(lenis: Lenis | null) {
+  if (reduced() || !lenis) return;
+  const imgs = Array.from(document.querySelectorAll<HTMLElement>(
+    ".shot .frame > picture > img, .hero-shot .frame > picture > img"));
+  if (!imgs.length) return;
+  let v = 0, sm = 0;
+  lenis.on("scroll", (e: any) => { v = e.velocity || 0; });
+  const tick = () => {
+    sm += (v - sm) * 0.09;
+    v *= 0.9;
+    const c = Math.max(-32, Math.min(32, sm));
+    const scale = (1 + Math.min(Math.abs(c) * 0.0018, 0.035)).toFixed(4);
+    const skew = Math.max(-1.5, Math.min(1.5, c * 0.05)).toFixed(3);
+    const t = `scale(${scale}) skewY(${skew}deg)`;
+    for (const el of imgs) el.style.transform = t;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 /** Subtle parallax: elements move at [data-parallax] * scroll progress through the viewport. */
 export function initParallax(lenis: Lenis | null) {
   const nodes = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
