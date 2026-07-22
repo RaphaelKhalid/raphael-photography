@@ -15,22 +15,27 @@ site) and the **color-grading workflow** that produces its images.
   for the site's image pipeline**, committed to the repo.
 - `src/`, `scripts/images.mjs`, `*.html`, `public/img/` — the web app (see below).
 
-Live: https://raphael-sf-photography.vercel.app ·
-Repo: https://github.com/RaphaelKhalid/raphael-sf-photography
+Live: https://raphael-photography.vercel.app ·
+Repo: https://github.com/RaphaelKhalid/raphael-photography
 
 ## Website architecture
 
-- **Vite multi-page**, vanilla TS (no framework runtime). Each route is a thin
-  `index.html` shell with `<main id="app" data-route="…" [data-slug="…"]>`;
-  `src/main.ts` reads the route and renders header, gallery, footer, lightbox.
-  Routes are registered in `vite.config.ts` (`rollupOptions.input`).
+- **Vite multi-page**, vanilla TS (no framework runtime). Three routes only —
+  `/` (home), `/about`, `/contact` — each a thin `index.html` shell with
+  `<main id="app" data-route="…">`; `src/main.ts` reads the route and renders
+  header, gallery, footer, lightbox. Registered in `vite.config.ts`. **No series**
+  — the home is one continuous gallery (series were removed).
 - **Content** is data-driven from `src/data/photos.ts` (per-photo `base`, `alt`,
-  `series`, `order`) merged with build-time `src/data/generated.json`
-  (`w`, `h`, `orientation`, `lqip`). Three sequenced series: `after-dark`,
-  `grid-grade`, `wild-edge`. Never hardcode galleries in HTML.
+  `order`) merged with build-time `src/data/generated.json`
+  (`w`, `h`, `orientation`, `lqip`). Never hardcode galleries in HTML. The home
+  flow (`renderHome`) interleaves full-bleed/offset landscape "moments" with
+  condensed vertical **strips** (diptych/triptych of portraits). No location
+  ("San Francisco") framing in copy — one frame is from elsewhere.
 - **Image pipeline** `scripts/images.mjs` (sharp): `Edited/*.JPG` → responsive
-  AVIF+WebP at 640/1280/1920/2560px into `public/img/`, plus per-image LQIP tone
-  and dimensions into `generated.json`. Keeps sRGB embedded (blue-hour banding).
+  AVIF+WebP at 768/1280/1920/2560/3840px **plus the full 6000px master** into
+  `public/img/`, plus per-image LQIP tone and dimensions into `generated.json`.
+  The lightbox loads progressively (light → viewport tier → 6000px full).
+  Keeps sRGB embedded (blue-hour banding).
   **Not run at build time** — derivatives in `public/img/` are committed so Vercel
   deploys stay fast. Run `npm run images` manually after changing photos and
   commit the output.
