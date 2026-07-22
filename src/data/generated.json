@@ -1,0 +1,230 @@
+{
+  "DSC_0240": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#18191b",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0253": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#4c2f1d",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0279": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#23282f",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0292": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#060509",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0300": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#2a2c30",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0307": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#343f4a",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0315": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#303339",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0324": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#333a42",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0351": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#30393e",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0363": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#394b5b",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0406": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#181a1b",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0407": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#2c3231",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0416": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#202326",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0446": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#232c37",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0468": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#0f101c",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0475": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#040405",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0551": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#2f4154",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0555": {
+    "w": 6000,
+    "h": 4000,
+    "orientation": "landscape",
+    "lqip": "#414449",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "DSC_0662": {
+    "w": 4000,
+    "h": 6000,
+    "orientation": "portrait",
+    "lqip": "#726d63",
+    "widths": [
+      640,
+      1280,
+      1920,
+      2560
+    ]
+  }
+}

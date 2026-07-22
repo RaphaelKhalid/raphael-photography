@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vercel/
+*.log
+.DS_Store
+
+# Original 6000px camera files — masters, not needed to build or serve the site.
+# Kept locally only. The graded, web-bound sources live in Edited/.
+Photos/
