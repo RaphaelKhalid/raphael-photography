@@ -2,7 +2,6 @@ import "./styles.css";
 import { photos, hero, type Photo } from "./data/photos";
 import { frame, header, footer } from "./lib/dom";
 import { initSmoothScroll, initReveals, initParallax } from "./lib/motion";
-import { initWebGL } from "./lib/webgl";
 
 /* ---------------- theme ---------------- */
 function initTheme() {
@@ -266,8 +265,6 @@ function boot() {
   const lenis = initSmoothScroll();
   initReveals();
   initParallax(lenis);
-  // WebGL gallery (falls back silently to the DOM reveals above if unsupported)
-  if (route === "home") initWebGL(lenis);
 }
 
 document.addEventListener("DOMContentLoaded", boot);
