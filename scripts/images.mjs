@@ -39,17 +39,19 @@ for (const file of files) {
   const dim = (v) => Math.round((v / n) * 0.82);
   const lqip = "#" + [dim(r), dim(g), dim(b)].map((v) => v.toString(16).padStart(2, "0")).join("");
 
-  const widths = WIDTHS.filter((x) => x <= longEdge);
-  if (widths.length === 0 || widths[widths.length - 1] < longEdge) widths.push(Math.min(longEdge, 2560));
+  // ladder up to (and including) the full master long edge, no enlargement
+  const widths = [...new Set([...WIDTHS.filter((x) => x < longEdge), longEdge])].sort((a, b) => a - b);
 
-  for (const width of [...new Set(widths)]) {
+  for (const width of widths) {
+    const full = width >= longEdge;
     const pipe = sharp(file).rotate()
       .resize({ width: orientation === "landscape" ? width : undefined,
                 height: orientation === "portrait" ? width : undefined,
                 withoutEnlargement: true })
       .withMetadata({ icc: "sRGB" }); // keep sRGB profile embedded
-    await pipe.clone().avif({ quality: 66, effort: 5 }).toFile(`${OUT}/${base}-${width}.avif`);
-    await pipe.clone().webp({ quality: 86, effort: 5 }).toFile(`${OUT}/${base}-${width}.webp`);
+    // slightly leaner encode for the giant full-res tier to keep it downloadable
+    await pipe.clone().avif({ quality: full ? 62 : 66, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.avif`);
+    await pipe.clone().webp({ quality: full ? 82 : 86, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.webp`);
   }
 
   meta[base] = { w, h, orientation, lqip, widths: [...new Set(widths)].sort((a, b) => a - b) };
