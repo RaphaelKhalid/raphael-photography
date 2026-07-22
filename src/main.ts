@@ -1,6 +1,7 @@
 import "./styles.css";
 import { photos, series, hero, bySeries, seriesBySlug, type Photo } from "./data/photos";
 import { frame, header, footer } from "./lib/dom";
+import { initSmoothScroll, initReveals, initParallax } from "./lib/motion";
 
 /* ---------------- theme ---------------- */
 function initTheme() {
@@ -51,12 +52,17 @@ function initLightbox(set: Photo[]) {
   const idxEl = lb.querySelector(".lb-index") as HTMLElement;
   let i = 0, lastFocus: HTMLElement | null = null;
 
-  const wide = () => Math.min(2560, Math.max(...(window as any).__widths(set[i])));
+  const wide = () => {
+    const ws: number[] = (window as any).__widths(set[i]);
+    const target = window.innerWidth * (window.devicePixelRatio || 1);
+    return ws.find((w) => w >= target) ?? ws[ws.length - 1]; // smallest tier that covers the viewport
+  };
   const show = (n: number) => {
     i = (n + set.length) % set.length;
     const p = set[i];
     img.classList.remove("loaded");
-    img.src = `/img/${p.base}-${wide()}.webp`;
+    const supportsAvif = document.createElement("canvas").toDataURL("image/avif").startsWith("data:image/avif");
+    img.src = `/img/${p.base}-${wide()}.${supportsAvif ? "avif" : "webp"}`;
     img.alt = p.alt;
     idxEl.textContent = `${String(i + 1).padStart(2, "0")} / ${String(set.length).padStart(2, "0")}`;
     if (img.complete) img.classList.add("loaded");
@@ -121,6 +127,7 @@ function renderMasonry(mount: HTMLElement, set: Photo[], offset = 0) {
   set.forEach((p, idx) => {
     const cell = document.createElement("div");
     cell.className = "cell";
+    cell.setAttribute("data-reveal", "");
     cell.appendChild(frame(p, { sizes: MASONRY_SIZES, index: idx + offset }));
     grid.appendChild(cell);
   });
@@ -133,21 +140,72 @@ function renderHome(app: HTMLElement) {
   const rest = photos.filter((p) => p.base !== hero.base);
   const set = [hero, ...rest];
 
-  const heroWrap = document.createElement("div");
-  heroWrap.className = "wrap pad-top";
-  const h = document.createElement("div");
-  h.className = "hero";
-  h.appendChild(frame(hero, { sizes: HERO_SIZES, eager: true, index: 0 }));
-  h.appendChild(el(`<div class="hero-meta"><span>${hero.alt.toLowerCase().replace(/\.$/, "")}</span><span>san francisco · after hours &amp; in between</span></div>`));
-  heroWrap.appendChild(h);
+  // ---- full-viewport hero ----
+  const heroSec = el(`
+    <section class="hero-full">
+      <div class="bleed" data-parallax="70"></div>
+      <div class="hero-caption" data-reveal>
+        <span class="sub">san francisco · after hours &amp; in between</span>
+        <span class="lede">the city once the light goes.</span>
+      </div>
+      <span class="scroll-cue">scroll</span>
+    </section>`);
+  const heroFrame = frame(hero, { sizes: HERO_SIZES, eager: true, index: 0 });
+  heroSec.querySelector(".bleed")!.appendChild(heroFrame);
 
-  const body = document.createElement("div");
-  body.className = "wrap pad-bot";
-  body.appendChild(el(`<div class="section-head"><span class="eyebrow">selected frames</span><span class="count">${set.length} / ${set.length}</span></div>`));
-  // hero occupies index 0 in the lightbox set; the grid holds the rest (offset 1)
-  renderMasonry(body, rest, 1);
+  // ---- editorial flow of "movements" ----
+  const flow = el(`<div class="flow"></div>`);
+  const shortCap = (p: Photo) => p.alt.toLowerCase().replace(/\.$/, "");
+  const singleCycle = ["m-bleed", "m-full", "m-offset-l", "m-full", "m-offset-r"];
+  let idx = 1, cyc = 0;
 
-  app.append(heroWrap, body);
+  const singleFrame = (p: Photo, sizes: string) => {
+    const f = frame(p, { sizes, index: idx++ });
+    return f;
+  };
+
+  for (let j = 0; j < rest.length; ) {
+    const p = rest[j];
+    const next = rest[j + 1];
+    if (p.orientation === "portrait" && next && next.orientation === "portrait") {
+      // paired portraits, staggered
+      const m = el(`<div class="movement m-pair stagger wrap" data-reveal></div>`);
+      const c1 = el(`<div class="p1"></div>`), c2 = el(`<div class="p2"></div>`);
+      c1.appendChild(singleFrame(p, "(max-width:720px) 100vw, 46vw"));
+      c2.appendChild(singleFrame(next, "(max-width:720px) 100vw, 46vw"));
+      m.append(c1, c2);
+      flow.appendChild(m);
+      j += 2;
+      continue;
+    }
+    const cls = p.orientation === "portrait"
+      ? (cyc % 2 ? "m-offset-r" : "m-offset-l")
+      : singleCycle[cyc % singleCycle.length];
+    cyc++;
+    const bleed = cls === "m-bleed";
+    const m = el(`<div class="movement ${cls} ${bleed ? "" : "wrap"}" data-reveal></div>`);
+    const inner = el(`<div class="inner"></div>`);
+    const sizes = bleed ? "100vw" : cls === "m-full" ? HERO_SIZES : "(max-width:720px) 100vw, 64vw";
+    inner.appendChild(singleFrame(p, sizes));
+    inner.appendChild(el(`<div class="m-caption">${shortCap(p)}</div>`));
+    m.appendChild(inner);
+    flow.appendChild(m);
+    j += 1;
+  }
+
+  // ---- closing chapter: series links ----
+  const chapters = el(`<div class="wrap pad-bot" style="margin-top:clamp(60px,10vw,120px)"></div>`);
+  chapters.appendChild(el(`<div class="section-head" data-reveal><span class="eyebrow">the work, in three parts</span></div>`));
+  series.slice().sort((a, b) => a.order - b.order).forEach((s) => {
+    const set2 = bySeries(s.slug);
+    chapters.appendChild(el(`
+      <div class="chapter" data-reveal>
+        <span class="c-title"><a href="/series/${s.slug}/">${s.title}</a></span>
+        <span class="c-meta">${String(set2.length).padStart(2, "0")} frames →</span>
+      </div>`));
+  });
+
+  app.append(heroSec, flow, chapters);
   return set;
 }
 
@@ -242,6 +300,11 @@ function boot() {
   initTheme();
   initHeaderScroll();
   initLightbox(set);
+
+  // experiential motion
+  const lenis = initSmoothScroll();
+  initReveals();
+  initParallax(lenis);
 }
 
 document.addEventListener("DOMContentLoaded", boot);

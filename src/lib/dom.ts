@@ -35,7 +35,7 @@ export function frame(p: Photo, opts: FrameOpts): HTMLElement {
       <picture>
         <source type="image/avif" srcset="${srcset(p, "avif")}" sizes="${opts.sizes}">
         <source type="image/webp" srcset="${srcset(p, "webp")}" sizes="${opts.sizes}">
-        <img src="/img/${p.base}-640.webp" width="${p.w}" height="${p.h}"
+        <img src="/img/${p.base}-768.webp" width="${p.w}" height="${p.h}"
              alt="${p.alt}" loading="${loading}" fetchpriority="${fetchpriority}" decoding="async">
       </picture>
     </div>`);
