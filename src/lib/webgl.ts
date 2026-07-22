@@ -1,8 +1,10 @@
-// WebGL gallery: overlays curtains.js planes on the existing DOM frames so the
-// layout, lightbox and accessibility stay intact, while the images render through
-// a scroll-velocity shader — a gentle bend + RGB channel-split on fast scroll, and
-// a shader-driven fade/rise reveal. Degrades to plain DOM images if WebGL is
-// unavailable, if the user prefers reduced motion, or if init fails.
+// WebGL gallery: curtains.js overlays planes synced to each DOM frame's box, so
+// layout, lightbox and a11y stay intact. Before curtains reads each frame we swap
+// its <img> to a high-resolution tier sized to the frame's on-screen footprint
+// (capped at a GPU-safe tier) so the texture is crisp. A scroll-velocity ripple
+// bends the interior while the edges stay anchored (no overscan / magnification).
+// Degrades to native DOM images on reduced-motion, small/low-memory devices,
+// no-WebGL, or any init error.
 import { Curtains, Plane } from "curtainsjs";
 import type Lenis from "lenis";
 
@@ -15,15 +17,13 @@ const vertexShader = `
   uniform mat4 uTextureMatrix0;
   varying vec2 vTextureCoord;
   uniform float uVelocity;
-  uniform float uAppear;
   void main() {
     vec3 pos = aVertexPosition;
-    // uniform overscan (preserves aspect) so the velocity bend never reveals the edge
-    pos.xy *= 1.09;
-    // gentle bend along the width, scaled by scroll velocity (clamped)
-    float v = clamp(uVelocity, -16.0, 16.0);
-    float bend = v * 0.0025;
-    pos.y += sin((pos.x + 1.0) * 1.5708) * bend;
+    // ripple the interior; fade to 0 at top/bottom edges so the plane edge is
+    // never lifted off its box (no overscan needed, texture shown 1:1)
+    float edgeFade = 1.0 - pos.y * pos.y;
+    float v = clamp(uVelocity, -18.0, 18.0);
+    pos.y += sin((pos.x + 1.0) * 1.5708) * v * 0.010 * edgeFade;
     gl_Position = uPMatrix * uMVMatrix * vec4(pos, 1.0);
     vTextureCoord = (uTextureMatrix0 * vec4(aTextureCoord, 0.0, 1.0)).xy;
   }`;
@@ -35,12 +35,15 @@ const fragmentShader = `
   uniform float uVelocity;
   void main() {
     float amt = clamp(abs(uVelocity) * 0.00028, 0.0, 0.004);
-    vec2 dir = vec2(0.0, 1.0);
-    float r = texture2D(uSampler0, vTextureCoord + dir * amt).r;
+    vec2 d = vec2(0.0, 1.0);
+    float r = texture2D(uSampler0, vTextureCoord + d * amt).r;
     float g = texture2D(uSampler0, vTextureCoord).g;
-    float b = texture2D(uSampler0, vTextureCoord - dir * amt).b;
+    float b = texture2D(uSampler0, vTextureCoord - d * amt).b;
     gl_FragColor = vec4(r, g, b, 1.0);
   }`;
+
+const TIERS = [768, 1280, 1920, 2560, 3840]; // capped below 6000 for GPU safety
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const supportsWebGL = () => {
   try {
@@ -49,15 +52,43 @@ const supportsWebGL = () => {
   } catch { return false; }
 };
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+function pickTier(frameEl: HTMLElement): number {
+  const r = frameEl.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const target = Math.max(r.width, r.height) * dpr * 1.15;
+  return TIERS.find((t) => t >= target) ?? TIERS[TIERS.length - 1];
+}
+
+// swap a frame's image to a high-res tier and make <img src> authoritative
+// (remove <source>/srcset) so curtains loads the crisp source as the texture
+function upgradeSource(frameEl: HTMLElement) {
+  const img = frameEl.querySelector("img");
+  if (!img) return;
+  const m = (img.currentSrc || img.src).match(/\/img\/(DSC_\d+)-\d+\.(avif|webp)/);
+  if (!m) return;
+  const [, base, ext] = m;
+  frameEl.querySelectorAll("source").forEach((s) => s.remove());
+  img.removeAttribute("srcset");
+  img.src = `/img/${base}-${pickTier(frameEl)}.${ext}`;
+}
 
 export function initWebGL(lenis: Lenis | null): boolean {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
   if (localStorage.getItem("webgl") === "off") return false;
+  if (window.innerWidth < 760) return false; // native is crisper on phones
+  if ((navigator as any).deviceMemory && (navigator as any).deviceMemory < 4) return false;
   if (!supportsWebGL()) return false;
 
   const frames = Array.from(document.querySelectorAll<HTMLElement>(".flow .frame"));
   if (!frames.length) return false;
+
+  // defer one frame so the grid strips have their final on-screen size
+  requestAnimationFrame(() => setup(frames, lenis));
+  return true;
+}
+
+function setup(frames: HTMLElement[], lenis: Lenis | null) {
+  frames.forEach(upgradeSource);
 
   const canvas = document.createElement("div");
   canvas.id = "webgl-canvas";
@@ -67,18 +98,16 @@ export function initWebGL(lenis: Lenis | null): boolean {
   try {
     curtains = new Curtains({
       container: canvas,
-      pixelRatio: Math.min(window.devicePixelRatio, 1.5),
+      pixelRatio: Math.min(window.devicePixelRatio, 2),
       watchScroll: true,
       alpha: true,
     });
-  } catch { canvas.remove(); return false; }
+  } catch { canvas.remove(); return; }
 
   let failed = false;
   curtains.onError(() => { failed = true; document.documentElement.classList.remove("curtains-active"); canvas.remove(); });
   curtains.onContextLost(() => curtains.restoreContext());
 
-  // curtains (watchScroll:true) tracks native scroll position itself — Lenis drives
-  // real scroll, so we only need its velocity signal for the shader.
   let velocity = 0, smooth = 0;
   if (lenis) lenis.on("scroll", (e: any) => { velocity = e.velocity || 0; });
 
@@ -87,13 +116,10 @@ export function initWebGL(lenis: Lenis | null): boolean {
     frames.forEach((frameEl) => {
       const plane = new Plane(curtains, frameEl, {
         vertexShader, fragmentShader,
-        widthSegments: 12, heightSegments: 1,
-        uniforms: {
-          uVelocity: { name: "uVelocity", type: "1f", value: 0 },
-        },
+        widthSegments: 14, heightSegments: 1,
+        uniforms: { uVelocity: { name: "uVelocity", type: "1f", value: 0 } },
       });
-      // hide this frame's DOM image only once its plane (and texture) are ready,
-      // so a frame is never blank (plane draws at full opacity immediately)
+      // hide the DOM image only once its plane (and texture) are ready — never blank
       plane.onReady(() => frameEl.classList.add("gl-ready"));
       planes.push(plane);
     });
@@ -101,20 +127,23 @@ export function initWebGL(lenis: Lenis | null): boolean {
     planes.forEach((p) => { try { p.remove(); } catch { /* noop */ } });
     try { curtains.dispose(); } catch { /* noop */ }
     canvas.remove();
-    return false;
+    return;
   }
+  if (!planes.length) { canvas.remove(); return; }
 
-  if (!planes.length) { canvas.remove(); return false; }
-
-  // hide the DOM images (and neutralise CSS reveals) only once WebGL is live
   document.documentElement.classList.add("curtains-active");
 
-  // recompute plane geometry after layout/fonts/images settle — grid-based strip
-  // cells aren't sized at synchronous init, so their planes start mispositioned
   const resize = () => { try { curtains.resize(); planes.forEach((p) => p.resize()); } catch { /* noop */ } };
   addEventListener("load", resize);
-  [120, 400, 900, 1800].forEach((t) => setTimeout(resize, t));
-  frames.forEach((f) => { const im = f.querySelector("img"); if (im && !im.complete) im.addEventListener("load", resize, { once: true }); });
+  [200, 600, 1400].forEach((t) => setTimeout(resize, t));
+
+  // The sticky header shrinks past 80px, which shifts all flow content up ~40px.
+  // curtains keeps stale plane positions, so re-measure across that transition.
+  let shrunk = window.scrollY > 80;
+  addEventListener("scroll", () => {
+    const s = window.scrollY > 80;
+    if (s !== shrunk) { shrunk = s; [0, 160, 380, 480].forEach((t) => setTimeout(resize, t)); }
+  }, { passive: true });
 
   curtains.onRender(() => {
     if (failed) return;
@@ -122,6 +151,4 @@ export function initWebGL(lenis: Lenis | null): boolean {
     velocity *= 0.9;
     for (const p of planes) p.uniforms.uVelocity.value = smooth;
   });
-
-  return true;
 }
