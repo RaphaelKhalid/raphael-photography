@@ -11,7 +11,8 @@ import path from "node:path";
 
 const SRC = "Edited";
 const OUT = "public/img";
-const WIDTHS = [640, 1280, 1920, 2560];
+// Full-HD-and-beyond ladder: crisp on 4K/retina displays without shipping the 6000px master.
+const WIDTHS = [768, 1280, 1920, 2560, 3840];
 const DATA = "src/data/generated.json";
 
 sharp.cache(false);
@@ -47,8 +48,8 @@ for (const file of files) {
                 height: orientation === "portrait" ? width : undefined,
                 withoutEnlargement: true })
       .withMetadata({ icc: "sRGB" }); // keep sRGB profile embedded
-    await pipe.clone().avif({ quality: 58, effort: 4 }).toFile(`${OUT}/${base}-${width}.avif`);
-    await pipe.clone().webp({ quality: 76 }).toFile(`${OUT}/${base}-${width}.webp`);
+    await pipe.clone().avif({ quality: 66, effort: 5 }).toFile(`${OUT}/${base}-${width}.avif`);
+    await pipe.clone().webp({ quality: 86, effort: 5 }).toFile(`${OUT}/${base}-${width}.webp`);
   }
 
   meta[base] = { w, h, orientation, lqip, widths: [...new Set(widths)].sort((a, b) => a - b) };
