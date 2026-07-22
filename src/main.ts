@@ -1,5 +1,5 @@
 import "./styles.css";
-import { photos, series, hero, bySeries, seriesBySlug, type Photo } from "./data/photos";
+import { photos, hero, type Photo } from "./data/photos";
 import { frame, header, footer } from "./lib/dom";
 import { initSmoothScroll, initReveals, initParallax } from "./lib/motion";
 
@@ -146,140 +146,75 @@ function initLightbox(set: Photo[]) {
   document.querySelectorAll(".frame[data-index]").forEach(trigger);
 }
 
-/* ---------------- gallery builders ---------------- */
-const MASONRY_SIZES = "(max-width: 700px) 100vw, (max-width: 1500px) 45vw, 340px";
+/* ---------------- home ---------------- */
 const HERO_SIZES = "(max-width: 1500px) 100vw, 1500px";
 
-function renderMasonry(mount: HTMLElement, set: Photo[], offset = 0) {
-  const grid = document.createElement("div");
-  grid.className = "masonry";
-  set.forEach((p, idx) => {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-    cell.setAttribute("data-reveal", "");
-    cell.appendChild(frame(p, { sizes: MASONRY_SIZES, index: idx + offset }));
-    grid.appendChild(cell);
-  });
-  mount.appendChild(grid);
+// group an ordered list into clusters, preferring triptychs, never leaving an orphan
+function clusterize<T>(arr: T[]): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; ) {
+    let take = Math.min(3, arr.length - i);
+    if (arr.length - i - take === 1) take--; // avoid a lonely trailing frame
+    out.push(arr.slice(i, i + take));
+    i += take;
+  }
+  return out;
 }
 
-/* ---------------- routes ---------------- */
 function renderHome(app: HTMLElement) {
-  // home lightbox set: hero first, then the rest in curated series order
   const rest = photos.filter((p) => p.base !== hero.base);
-  const set = [hero, ...rest];
 
   // ---- full-viewport hero ----
   const heroSec = el(`
     <section class="hero-full">
       <div class="bleed" data-parallax="70"></div>
-      <div class="hero-caption" data-reveal>
-        <span class="sub">san francisco · after hours &amp; in between</span>
-        <span class="lede">the city once the light goes.</span>
-      </div>
       <span class="scroll-cue">scroll</span>
     </section>`);
-  const heroFrame = frame(hero, { sizes: HERO_SIZES, eager: true, index: 0 });
-  heroSec.querySelector(".bleed")!.appendChild(heroFrame);
+  heroSec.querySelector(".bleed")!.appendChild(frame(hero, { sizes: HERO_SIZES, eager: true, index: 0 }));
 
-  // ---- editorial flow of "movements" ----
+  // ---- flow: interleave landscape "moments" with condensed vertical strips ----
   const flow = el(`<div class="flow"></div>`);
-  const shortCap = (p: Photo) => p.alt.toLowerCase().replace(/\.$/, "");
-  const singleCycle = ["m-bleed", "m-full", "m-offset-l", "m-full", "m-offset-r"];
-  let idx = 1, cyc = 0;
+  const flat: Photo[] = [];               // visual order → lightbox index
+  const emit = (p: Photo, sizes: string) => { const f = frame(p, { sizes, index: 1 + flat.length }); flat.push(p); return f; };
 
-  const singleFrame = (p: Photo, sizes: string) => {
-    const f = frame(p, { sizes, index: idx++ });
-    return f;
-  };
+  const land = rest.filter((p) => p.orientation === "landscape");
+  const clusters = clusterize(rest.filter((p) => p.orientation === "portrait"));
+  const moment = ["m-bleed", "m-full", "m-offset-l", "m-full", "m-offset-r"];
 
-  for (let j = 0; j < rest.length; ) {
-    const p = rest[j];
-    const next = rest[j + 1];
-    if (p.orientation === "portrait" && next && next.orientation === "portrait") {
-      // paired portraits, staggered
-      const m = el(`<div class="movement m-pair stagger wrap" data-reveal></div>`);
-      const c1 = el(`<div class="p1"></div>`), c2 = el(`<div class="p2"></div>`);
-      c1.appendChild(singleFrame(p, "(max-width:720px) 100vw, 46vw"));
-      c2.appendChild(singleFrame(next, "(max-width:720px) 100vw, 46vw"));
-      m.append(c1, c2);
+  let li = 0, ci = 0, cyc = 0;
+  while (li < land.length || ci < clusters.length) {
+    // whichever pool is proportionally behind goes next (landscape wins ties)
+    const takeCluster = ci < clusters.length &&
+      (li >= land.length || ci / clusters.length < li / land.length);
+
+    if (takeCluster) {
+      const group = clusters[ci++];
+      const strip = el(`<div class="movement m-strip wrap" data-count="${group.length}"></div>`);
+      const rail = el(`<div class="strip"></div>`);
+      group.forEach((p, k) => {
+        const cell = el(`<div data-reveal data-reveal-delay="${k * 90}"></div>`);
+        cell.appendChild(emit(p, "(max-width:720px) 100vw, 30vw"));
+        rail.appendChild(cell);
+      });
+      strip.appendChild(rail);
+      flow.appendChild(strip);
+    } else {
+      const p = land[li++];
+      const cls = moment[cyc++ % moment.length];
+      const bleed = cls === "m-bleed";
+      const m = el(`<div class="movement ${cls} ${bleed ? "" : "wrap"}" data-reveal></div>`);
+      const inner = el(`<div class="inner"></div>`);
+      const sizes = bleed ? "100vw" : cls === "m-full" ? HERO_SIZES : "(max-width:720px) 100vw, 64vw";
+      inner.appendChild(emit(p, sizes));
+      m.appendChild(inner);
       flow.appendChild(m);
-      j += 2;
-      continue;
     }
-    const cls = p.orientation === "portrait"
-      ? (cyc % 2 ? "m-offset-r" : "m-offset-l")
-      : singleCycle[cyc % singleCycle.length];
-    cyc++;
-    const bleed = cls === "m-bleed";
-    const m = el(`<div class="movement ${cls} ${bleed ? "" : "wrap"}" data-reveal></div>`);
-    const inner = el(`<div class="inner"></div>`);
-    const sizes = bleed ? "100vw" : cls === "m-full" ? HERO_SIZES : "(max-width:720px) 100vw, 64vw";
-    inner.appendChild(singleFrame(p, sizes));
-    inner.appendChild(el(`<div class="m-caption">${shortCap(p)}</div>`));
-    m.appendChild(inner);
-    flow.appendChild(m);
-    j += 1;
   }
 
-  // ---- closing chapter: series links ----
-  const chapters = el(`<div class="wrap pad-bot" style="margin-top:clamp(60px,10vw,120px)"></div>`);
-  chapters.appendChild(el(`<div class="section-head" data-reveal><span class="eyebrow">the work, in three parts</span></div>`));
-  series.slice().sort((a, b) => a.order - b.order).forEach((s) => {
-    const set2 = bySeries(s.slug);
-    chapters.appendChild(el(`
-      <div class="chapter" data-reveal>
-        <span class="c-title"><a href="/series/${s.slug}/">${s.title}</a></span>
-        <span class="c-meta">${String(set2.length).padStart(2, "0")} frames →</span>
-      </div>`));
-  });
-
-  app.append(heroSec, flow, chapters);
-  return set;
-}
-
-function renderSeriesIndex(app: HTMLElement) {
-  const wrap = document.createElement("div");
-  wrap.className = "wrap pad-top pad-bot";
-  wrap.appendChild(el(`<div class="section-head"><h1 class="title-lg">series</h1></div>`));
-  series.sort((a, b) => a.order - b.order).forEach((s, n) => {
-    const set = bySeries(s.slug);
-    const cover = set[0];
-    const row = document.createElement("div");
-    row.className = "series-row" + (n % 2 ? " flip" : "");
-    const cov = document.createElement("a");
-    cov.href = `/series/${s.slug}/`;
-    cov.style.display = "block";
-    cov.setAttribute("aria-label", `${s.title} — ${set.length} frames`);
-    cov.appendChild(frame(cover, { sizes: "(max-width:760px) 100vw, 48vw", cover: true }));
-    const text = el(`
-      <div class="series-text">
-        <a href="/series/${s.slug}/"><h2 class="series-title">${s.title}</h2></a>
-        <p>${s.blurb}</p>
-        <span class="count">${String(set.length).padStart(2, "0")} frames →</span>
-      </div>`);
-    row.append(text, cov);
-    wrap.appendChild(row);
-  });
-  app.appendChild(wrap);
-  return [];
-}
-
-function renderSeriesDetail(app: HTMLElement, slug: string) {
-  const s = seriesBySlug(slug);
-  const set = bySeries(slug);
-  if (!s || !set.length) { location.replace("/series/"); return []; }
-  const wrap = document.createElement("div");
-  wrap.className = "wrap pad-top pad-bot";
-  wrap.appendChild(el(`
-    <div class="section-head">
-      <div><span class="eyebrow">series</span><h1 class="title-lg">${s.title}</h1></div>
-      <span class="count">${String(set.length).padStart(2, "0")} frames</span>
-    </div>`));
-  renderMasonry(wrap, set);
-  app.appendChild(wrap);
-  document.title = `${s.title} — raphael`;
-  return set;
+  app.append(heroSec, flow);
+  const foot = el(`<div class="wrap pad-bot" style="margin-top:clamp(50px,9vw,110px)"></div>`);
+  app.append(foot);
+  return [hero, ...flat];
 }
 
 function renderAbout(app: HTMLElement) {
@@ -287,7 +222,7 @@ function renderAbout(app: HTMLElement) {
     <div class="wrap"><div class="plain">
       <span class="eyebrow">about</span>
       <p class="big">raphael</p>
-      <p>Photographs of San Francisco after hours and in between — blue hour, fog, lamplight and the wild edges of the city. Shot on a Nikon; graded for a cinematic, low-light mood.</p>
+      <p>Night and low-light photographs — blue hour, fog, fireworks and quiet edges. Shot on a Nikon and graded for a cinematic, low-light mood.</p>
     </div></div>`));
   return [];
 }
@@ -312,16 +247,12 @@ function el(html: string): HTMLElement {
 function boot() {
   const root = document.getElementById("app")!;
   const route = root.dataset.route!;
-  const slug = root.dataset.slug || "";
 
   document.body.prepend(el(`<a class="skip" href="#app">Skip to content</a>`));
-  document.body.prepend(header(route === "series" ? "series"
-    : route === "about" ? "about" : route === "contact" ? "contact" : ""));
+  document.body.prepend(header(route === "about" ? "about" : route === "contact" ? "contact" : ""));
 
   let set: Photo[] = [];
   if (route === "home") set = renderHome(root);
-  else if (route === "series") set = renderSeriesIndex(root);
-  else if (route === "series-detail") set = renderSeriesDetail(root, slug);
   else if (route === "about") set = renderAbout(root);
   else if (route === "contact") set = renderContact(root);
 

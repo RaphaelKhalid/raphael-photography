@@ -1,4 +1,4 @@
-import { photos, series, type Photo } from "../data/photos";
+import { photos, type Photo } from "../data/photos";
 
 const el = (html: string): HTMLElement => {
   const t = document.createElement("template");
@@ -52,7 +52,6 @@ export function header(active: string): HTMLElement {
     <header class="site-head">
       <a class="brand" href="/">raphael</a>
       <nav class="nav" aria-label="Primary">
-        ${link("/series/", "series")}
         ${link("/about/", "about")}
         ${link("/contact/", "contact")}
         <button type="button" id="theme-toggle" aria-label="Toggle light and dark">light</button>
@@ -64,7 +63,7 @@ export function header(active: string): HTMLElement {
 export function footer(): HTMLElement {
   return el(`
     <footer class="site-foot">
-      <span>raphael · san francisco, ca</span>
-      <span>${photos.length} frames · ${series.length} series</span>
+      <span>raphael</span>
+      <span>${photos.length} frames</span>
     </footer>`);
 }
