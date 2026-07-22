@@ -9,7 +9,7 @@ import { glob } from "glob";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const SRC = "Edited";
+const SRC = "Photos"; // original unedited camera files — no grade re-encode, sharpest source
 const OUT = "public/img";
 // Full-HD-and-beyond ladder: crisp on 4K/retina displays without shipping the 6000px master.
 const WIDTHS = [768, 1280, 1920, 2560, 3840];
@@ -25,9 +25,11 @@ const meta = {};
 
 for (const file of files) {
   const base = path.basename(file, ".JPG");
-  const img = sharp(file).rotate(); // bake any EXIF orientation
-  const m = await img.metadata();
-  const w = m.width, h = m.height;
+  // metadata() reports pre-rotation dims; swap when EXIF orientation is a 90° turn (5-8)
+  const meta0 = await sharp(file).metadata();
+  const swap = (meta0.orientation || 1) >= 5;
+  const w = swap ? meta0.height : meta0.width;
+  const h = swap ? meta0.width : meta0.height;
   const orientation = w >= h ? "landscape" : "portrait";
   const longEdge = Math.max(w, h);
 
@@ -49,9 +51,9 @@ for (const file of files) {
                 height: orientation === "portrait" ? width : undefined,
                 withoutEnlargement: true })
       .withMetadata({ icc: "sRGB" }); // keep sRGB profile embedded
-    // slightly leaner encode for the giant full-res tier to keep it downloadable
-    await pipe.clone().avif({ quality: full ? 62 : 66, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.avif`);
-    await pipe.clone().webp({ quality: full ? 82 : 86, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.webp`);
+    // high-fidelity encode (quality is the priority); leaner only for the huge full-res tier
+    await pipe.clone().avif({ quality: full ? 74 : 84, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.avif`);
+    await pipe.clone().webp({ quality: full ? 90 : 94, effort: full ? 4 : 5 }).toFile(`${OUT}/${base}-${width}.webp`);
   }
 
   meta[base] = { w, h, orientation, lqip, widths: [...new Set(widths)].sort((a, b) => a - b) };
