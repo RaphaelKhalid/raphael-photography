@@ -9,3 +9,6 @@ dist/
 Photos/
 
 .vercel
+
+# local agent notes (kept out of the repo)
+/CLAUDE.md
